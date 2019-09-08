@@ -18,7 +18,16 @@ export default class Tabs {
 		this.orientation = this.tablist.getAttribute('aria-orientation') || 'horizontal';
 		this.preSelectTab = this.tablist.getAttribute('data-preselect-tab');
 
-		console.log(this.selectionFollowFocus)
+		this.keyCode = Object.freeze({
+			RETURN: 13,
+			SPACE: 32,
+			END: 35,
+			HOME: 36,
+			LEFT: 37,
+			UP: 38,
+			RIGHT: 39,
+			DOWN: 40
+		});
 	}
 
 	init() {
@@ -225,15 +234,4 @@ export default class Tabs {
 	hasFalseValue(attr) {
 		return attr !== null && attr === 'false';
 	}
-
-	keyCode = Object.freeze({
-		RETURN: 13,
-		SPACE: 32,
-		END: 35,
-		HOME: 36,
-		LEFT: 37,
-		UP: 38,
-		RIGHT: 39,
-		DOWN: 40
-	});
 };
