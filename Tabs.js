@@ -65,6 +65,10 @@ export default class Tabs {
 	}
 
 	selectTab(tab) {
+		if (tab === null) {
+			return;
+		}
+
 		const isSelected = tab.getAttribute('aria-selected') === 'true';
 		if (isSelected) {
 			return; // Could exit earlier since only one tab from tablist could be selected
