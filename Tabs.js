@@ -70,7 +70,6 @@ export default class Tabs {
 
 	handleClick(event) {
 		event.preventDefault();
-		event.target.focus(); // Fix Safari default behaviour
 		this.selectTab(event.target);
 	}
 

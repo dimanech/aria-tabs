@@ -1,3 +1,7 @@
+button:active {
+	color: red;
+}
+
 .tabs [data-role=tablist] {
 	border-bottom: 1px solid;
 	display: flex;

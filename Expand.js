@@ -72,7 +72,6 @@ export default class Expand {
 
 	handleClick(event) {
 		event.preventDefault();
-		event.target.focus(); // Fix Safari default behaviour
 		this.toggle();
 	}
 

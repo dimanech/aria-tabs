@@ -69,7 +69,6 @@ export default class Accordion {
 
 	handleClick(event) {
 		event.preventDefault();
-		event.target.focus(); // Fix Safari default behaviour
 		this.toggleSection(event.target);
 	}
 
