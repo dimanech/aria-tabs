@@ -151,7 +151,6 @@ export default class Accordion {
 		const key = event.which || event.keyCode;
 		// FF fires click event on button node after keyup
 		if (key === this.keyCode.SPACE || key === this.keyCode.RETURN) {
-			event.stopPropagation();
 			event.preventDefault();
 		}
 	}
