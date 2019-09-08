@@ -1,0 +1,72 @@
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Tabs</title>
+	<style>
+		.tabs [data-role=tablist] {
+			display: flex;
+			margin: auto;
+			width: 10%;
+			position: relative;
+		}
+		
+		.tabs button {
+			border: 3px outset buttonFace;
+			white-space: nowrap;
+		}
+		
+		.tabs [aria-selected=true] {
+			border-style: inset;
+		}
+		
+		.tabs__panel {
+			border: 1px solid;
+			margin-top: -10px;
+			padding: 10px;
+		}
+		
+		.tabs__panel[aria-hidden=true] {
+			display: none;
+		}
+		
+		.tabs__panel[aria-hidden=false] {
+			display: block;
+		}
+	</style>
+</head>
+<body>
+	<p>Some <a href="#some">focusable content</a> before the component</p>
+	
+	<div class="tabs">
+		<div data-role="tablist" aria-orientation="horizontal">
+			<button data-role="tab" data-aria-controls="tabpanel-1" id="tab-1">Tab 1</button>
+			<button data-role="tab" data-aria-controls="tabpanel-2" id="tab-2">Tab 2</button>
+			<button data-role="tab" data-aria-controls="tabpanel-3" id="tab-3">Tab 3</button>
+		</div>
+		
+		<section class="tabs__panel" id="tabpanel-1">
+			<h2>Tab 1</h2>
+			<p><a href="google.com">Google.com</a></p>
+		</section>
+		
+		<section class="tabs__panel" id="tabpanel-2">
+			<h2>Tab 2</h2>
+			<p>Some content</p>
+		</section>
+		
+		<section class="tabs__panel" id="tabpanel-3">
+			<h2>Tab 3</h2>
+			<p>Some content</p>
+		</section>
+	</div>
+	
+	<p>Some <a href="#some">focusable content</a> after the component</p>
+	
+	<script type="module">
+		import Tabs from './Tabs.js';
+		document.querySelectorAll('[data-role=tablist]').forEach(component => new Tabs(component).init());
+	</script>
+</body>
+</html>
