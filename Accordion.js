@@ -18,6 +18,8 @@ export default class Accordion {
 		this.keyCode = Object.freeze({
 			RETURN: 13,
 			SPACE: 32,
+			PAGEUP: 33,
+			PAGEDOWN: 34,
 			END: 35,
 			HOME: 36,
 			UP: 38,
@@ -40,10 +42,12 @@ export default class Accordion {
 	addEventListeners() {
 		this.handleClick = this.handleClick.bind(this);
 		this.handleKeydown = this.handleKeydown.bind(this);
+		this.handleKeyup = this.handleKeyup.bind(this);
 
 		this.buttons.forEach(button => {
 			button.addEventListener('click', this.handleClick);
 			button.addEventListener('keydown', this.handleKeydown);
+			button.addEventListener('keyup', this.handleKeyup);
 		});
 	}
 
@@ -51,6 +55,7 @@ export default class Accordion {
 		this.buttons.forEach(button => {
 			button.removeEventListener('click', this.handleClick);
 			button.removeEventListener('keydown', this.handleKeydown);
+			button.addEventListener('keyup', this.handleKeyup);
 		});
 	}
 
@@ -96,6 +101,7 @@ export default class Accordion {
 	static openSection(button) {
 		button.setAttribute('aria-expanded', 'true');
 		button.classList.add('m-expanded');
+
 		const controlledSection = document.getElementById(button.getAttribute('data-aria-controls'));
 		if (!controlledSection) {
 			return;
@@ -111,9 +117,11 @@ export default class Accordion {
 		switch (key) {
 			case this.keyCode.SPACE:
 				this.handleClick(event);
+				preventEventActions = true;
 				break;
 			case this.keyCode.RETURN:
 				this.handleClick(event);
+				preventEventActions = true;
 				break;
 			case this.keyCode.DOWN:
 				this.focusButtonByIndex(this.getButtonIndex(event.target) + 1);
@@ -139,14 +147,18 @@ export default class Accordion {
 		}
 	}
 
-	getButtonIndex(domNode) {
-		for (let i = 0; i < this.buttons.length; i++) {
-			if (this.buttons[i] === domNode) {
-				return i;
-			}
+	handleKeyup(event) {
+		const key = event.which || event.keyCode;
+		// FF fires click event on button node after keyup
+		if (key === this.keyCode.SPACE || key === this.keyCode.RETURN) {
+			event.stopPropagation();
+			event.preventDefault();
 		}
+	}
 
-		return 0;
+	getButtonIndex(domNode) {
+		const index = this.buttons.indexOf(domNode);
+		return index === -1 ? 0 : index;
 	}
 
 	focusButtonByIndex(requestedIndex) {

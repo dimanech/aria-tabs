@@ -39,14 +39,17 @@ export default class Expand {
 	addEventListeners() {
 		this.handleClick = this.handleClick.bind(this);
 		this.handleKeydown = this.handleKeydown.bind(this);
+		this.handleKeyup = this.handleKeyup.bind(this);
 
 		this.button.addEventListener('click', this.handleClick);
 		this.button.addEventListener('keydown', this.handleKeydown);
+		this.button.addEventListener('keyup', this.handleKeyup);
 	}
 
 	removeEventListeners() {
 		this.button.removeEventListener('click', this.handleClick);
 		this.button.removeEventListener('keydown', this.handleKeydown);
+		this.button.removeEventListener('keyup', this.handleKeyup);
 	}
 
 	addComponentReference() {
@@ -68,6 +71,7 @@ export default class Expand {
 	}
 
 	handleClick(event) {
+		event.stopPropagation();
 		event.preventDefault();
 		this.toggle();
 	}
@@ -116,6 +120,15 @@ export default class Expand {
 		}
 
 		if (preventEventActions) {
+			event.stopPropagation();
+			event.preventDefault();
+		}
+	}
+
+	handleKeyup(event) {
+		const key = event.which || event.keyCode;
+		// FF fires click event on button node after keyup
+		if (key === this.keyCode.SPACE || key === this.keyCode.RETURN) {
 			event.stopPropagation();
 			event.preventDefault();
 		}
