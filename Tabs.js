@@ -1,5 +1,16 @@
 export default class Tabs {
-	/**
+	keyCode = Object.freeze({
+		RETURN: 13,
+		SPACE: 32,
+		END: 35,
+		HOME: 36,
+		LEFT: 37,
+		UP: 38,
+		RIGHT: 39,
+		DOWN: 40
+	});
+
+	/*
 	 * Tabs
 	 * Please see W3C specs https://www.w3.org/TR/wai-aria-practices/#tabpanel
 	 *
@@ -10,37 +21,29 @@ export default class Tabs {
 	 * `aria-orientation=[vertical|horizontal]` - orientation of the tablist. This is for information only since
 	 * in current implementation up/down arrows act alongside with left/right.
 	 */
-	constructor(tablist) {
+	constructor(tablist, config) {
+		// elements
 		this.tablist = tablist;
-		this.tabs = Array.from(this.tablist.querySelectorAll('[data-role=tab]'));
+		this.tabs = Array.from(this.tablist.querySelectorAll('[role=tab]'));
+		// options
+		this.options = {
+			selectionFollowFocus: config?.selectionFollowFocus || !this.isSetToFalse(this.tablist.getAttribute('data-selection-follow-focus')),
+			orientation: config?.orientation || this.tablist.getAttribute('aria-orientation') || 'horizontal',
+			preSelectTab: config?.preSelectTab || this.tablist.getAttribute('data-preselect-tab')
+		}
+		// state
 		this.selectedTab = null;
-		this.selectionFollowFocus = !this.hasFalseValue(this.tablist.getAttribute('data-selection-follow-focus'));
-		this.orientation = this.tablist.getAttribute('aria-orientation') || 'horizontal';
-		this.preSelectTab = this.tablist.getAttribute('data-preselect-tab');
-
-		this.keyCode = Object.freeze({
-			RETURN: 13,
-			SPACE: 32,
-			END: 35,
-			HOME: 36,
-			LEFT: 37,
-			UP: 38,
-			RIGHT: 39,
-			DOWN: 40
-		});
+		this.focusedTab = null;
 	}
 
 	init() {
-		this.initRoles();
 		this.addEventListeners();
-		this.addComponentReference();
-		this.selectTab(this.preSelectTab ? this.getButtonIndex(document.getElementById(this.preSelectTab)) : this.tabs[0]);
+		const activeTabIndex = this.options.preSelectTab ? this.getButtonIndex(document.getElementById(this.options.preSelectTab)) : 0;
+		this.selectTab(this.tabs[activeTabIndex]);
 	}
 
 	destroy() {
-		this.destroyRoles();
 		this.removeEventListeners();
-		this.removeComponentReference();
 	}
 
 	addEventListeners() {
@@ -60,86 +63,47 @@ export default class Tabs {
 		});
 	}
 
-	addComponentReference() {
-		this.tablist.widget = this;
-	}
-
-	removeComponentReference() {
-		delete this.tablist.widget;
-	}
-
 	handleClick(event) {
 		event.preventDefault();
 		this.selectTab(event.target);
 	}
 
-	selectTab(tab) {
-		if (tab === null) {
+	selectTab(tabNode) {
+		if (!tabNode) { // since we expecting to init on empty tablist to fill it later
 			return;
 		}
 
-		const isSelected = tab.getAttribute('aria-selected') === 'true';
+		const isSelected = tabNode.getAttribute('aria-selected') === 'true';
 		if (isSelected) {
 			return; // Could exit earlier since only one tab from tablist could be selected
 		}
 
-		Tabs.closeTab(this.selectedTab);
-		Tabs.openTab(tab);
-		this.selectedTab = tab;
-		this.focusedTab = tab;
+		if (this.selectedTab) {
+			Tabs.toggleTab(false, this.selectedTab);
+		}
+		Tabs.toggleTab(true, tabNode);
+		this.selectedTab = tabNode;
+		this.focusedTab = tabNode;
 	}
 
-	static closeTab(tab) {
-		if (tab === null) {
+	static toggleTab(isOpen, tabNode) {
+		tabNode.setAttribute('aria-selected', isOpen);
+		tabNode.setAttribute('tabindex', isOpen ? '0' : '-1');
+
+		const controlledTabPanelNode = document.getElementById(tabNode.getAttribute('aria-controls'));
+		if (!controlledTabPanelNode) {
 			return;
 		}
+		controlledTabPanelNode.setAttribute('aria-hidden', !isOpen);
+		controlledTabPanelNode.setAttribute('tabindex', isOpen ? '0' : '-1');
 
-		tab.setAttribute('aria-selected', 'false');
-		tab.setAttribute('tabindex', '-1');
-		tab.classList.remove('m-selected');
-
-		const controlledTabPanel = document.getElementById(tab.getAttribute('data-aria-controls'));
-		if (controlledTabPanel) {
-			controlledTabPanel.setAttribute('aria-hidden', 'true');
-			controlledTabPanel.removeAttribute('tabindex');
-			tab.dispatchEvent(new CustomEvent('tab:closed', {
-				bubbles: true,
-				cancelable: true
-			}));
-		}
-	}
-
-	static openTab(tab) {
-		if (tab === null) {
-			return;
-		}
-
-		tab.setAttribute('aria-selected', 'true');
-		tab.setAttribute('tabindex', '0');
-		tab.classList.add('m-selected');
-
-		const controlledTabPanel = document.getElementById(tab.getAttribute('data-aria-controls'));
-		if (controlledTabPanel) {
-			controlledTabPanel.setAttribute('aria-hidden', 'false');
-			controlledTabPanel.setAttribute('tabindex', 0);
-			tab.dispatchEvent(new CustomEvent('tab:open', {
-				bubbles: true,
-				cancelable: true
-			}));
-		}
-	}
-
-	addTab() {
-	}
-
-	removeTab() {
+		tabNode.dispatchEvent(new Event('tab:' + (isOpen ? 'open': 'closed')));
 	}
 
 	handleKeydown(event) {
-		const key = event.which || event.keyCode;
 		let preventEventActions = false;
 
-		switch (key) {
+		switch (event.keyCode) {
 			case this.keyCode.SPACE:
 				this.handleClick(event);
 				break;
@@ -166,7 +130,7 @@ export default class Tabs {
 				break;
 		}
 
-		if (this.selectionFollowFocus) {
+		if (this.options.selectionFollowFocus) {
 			this.selectTab(this.focusedTab);
 		}
 
@@ -182,56 +146,20 @@ export default class Tabs {
 	}
 
 	focusButtonByIndex(requestedIndex) {
-		const buttonsLength = this.tabs.length;
+		const tabsTotal = this.tabs.length;
 		let nextIndex;
 
 		if (requestedIndex < 0) {
-			nextIndex = (buttonsLength - 1);
+			nextIndex = (tabsTotal - 1);
 		} else {
-			nextIndex = requestedIndex % buttonsLength;
+			nextIndex = requestedIndex % tabsTotal;
 		}
 
 		this.focusedTab = this.tabs[nextIndex];
 		this.tabs[nextIndex].focus();
 	}
 
-	initRoles() {
-		this.tablist.setAttribute('role', 'tablist');
-		this.tabs.forEach(tab => {
-			const controlledTabPanel = tab.getAttribute('data-aria-controls');
-			tab.setAttribute('role', 'tab');
-			tab.setAttribute('aria-controls', controlledTabPanel);
-			tab.setAttribute('aria-selected', 'false');
-			tab.setAttribute('tabindex', '-1');
-			const controlledTabPanelNode = document.getElementById(controlledTabPanel);
-			if (controlledTabPanelNode) {
-				controlledTabPanelNode.setAttribute('role', 'tabpanel');
-				controlledTabPanelNode.setAttribute('aria-hidden', 'true');
-				controlledTabPanelNode.setAttribute('tabindex', '0');
-			}
-		});
-	}
-
-	destroyRoles() {
-		this.tablist.removeAttribute('role');
-		this.tabs.forEach(tab => {
-			tab.removeAttribute('role');
-			tab.removeAttribute('tabindex');
-			tab.removeAttribute('aria-controls');
-			tab.removeAttribute('aria-selected');
-			tab.tabIndex = -1;
-			const controlledTabPanel = document.getElementById(tab.getAttribute('data-aria-controls'));
-			if (controlledTabPanel) {
-				controlledTabPanel.classList.remove('m-selected');
-				controlledTabPanel.removeAttribute('aria-hidden');
-				controlledTabPanel.removeAttribute('role');
-				controlledTabPanel.removeAttribute('tabindex');
-				controlledTabPanel.tabIndex = -1;
-			}
-		});
-	}
-
-	hasFalseValue(attr) {
+	isSetToFalse(attr) {
 		return attr !== null && attr === 'false';
 	}
-};
+}

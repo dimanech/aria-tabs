@@ -1,5 +1,16 @@
+// TODO: disable active button in case if not allow multiple
+
 export default class Accordion {
-	/**
+	keyCode = Object.freeze({
+		RETURN: 13,
+		SPACE: 32,
+		END: 35,
+		HOME: 36,
+		UP: 38,
+		DOWN: 40
+	});
+
+	/*
 	 * Accordion
 	 * Please see W3C specs https://www.w3.org/TR/wai-aria-practices/#accordion
 	 *
@@ -9,34 +20,25 @@ export default class Accordion {
 	 * `data-allow-multiple` - Allow for multiple accordion sections to be expanded
 	 *  at the same time.
 	 */
-	constructor(group) {
-		this.group = group;
-		this.buttons = Array.from(this.group.querySelectorAll('[data-aria-controls]'));
-		this.allowToggle = this.isAttributeSet(this.group.getAttribute('data-allow-toggle'));
-		this.allowMultiple = this.isAttributeSet(this.group.getAttribute('data-allow-multiple'));
-
-		this.keyCode = Object.freeze({
-			RETURN: 13,
-			SPACE: 32,
-			PAGEUP: 33,
-			PAGEDOWN: 34,
-			END: 35,
-			HOME: 36,
-			UP: 38,
-			DOWN: 40
-		});
+	constructor(domNode, config) {
+		// elements
+		this.group = domNode;
+		this.buttons = Array.from(this.group.querySelectorAll('[aria-controls]'));
+		// options
+		this.options = {
+			allowToggle: config?.allowToggle || this.isAttributeSet(this.group.getAttribute('data-allow-toggle')),
+			allowMultiple: config?.allowMultiple || this.isAttributeSet(this.group.getAttribute('data-allow-multiple'))
+		}
 	}
 
 	init() {
-		this.initRoles();
 		this.addEventListeners();
-		this.addComponentReference();
+		this.initSectionHeight();
 	}
 
 	destroy() {
-		this.destroyRoles();
 		this.removeEventListeners();
-		this.removeComponentReference();
+		this.destroySectionHeight();
 	}
 
 	addEventListeners() {
@@ -55,70 +57,53 @@ export default class Accordion {
 		this.buttons.forEach(button => {
 			button.removeEventListener('click', this.handleClick);
 			button.removeEventListener('keydown', this.handleKeydown);
-			button.addEventListener('keyup', this.handleKeyup);
+			button.removeEventListener('keyup', this.handleKeyup);
 		});
-	}
-
-	addComponentReference() {
-		this.group.widget = this;
-	}
-
-	removeComponentReference() {
-		delete this.group.widget;
 	}
 
 	handleClick(event) {
 		event.preventDefault();
-		this.toggleSection(event.target);
+		this.activateSection(event.target);
 	}
 
-	toggleSection(button) {
+	initSectionHeight() {
+		this.buttons.forEach(button => Accordion.toggleSection(false, button));
+	}
+
+	destroySectionHeight() {
+		this.buttons.forEach(button => Accordion.toggleSection(null, button));
+	}
+
+	activateSection(button) {
 		const isExpanded = button.getAttribute('aria-expanded') === 'true';
 
-		if (!this.allowMultiple) {
-			this.buttons.forEach(button => Accordion.closeSection(button));
+		if (!this.options.allowMultiple) {
+			this.buttons.forEach(button => Accordion.toggleSection(false, button));
 		}
 
-		if ((this.allowToggle || this.allowMultiple) && isExpanded) {
-			Accordion.closeSection(button);
+		if ((this.options.allowToggle || this.options.allowMultiple) && isExpanded) {
+			Accordion.toggleSection(false, button);
 		} else {
-			Accordion.openSection(button);
+			Accordion.toggleSection(true, button);
 		}
 	}
 
-	static closeSection(button) {
-		button.setAttribute('aria-expanded', 'false');
-		button.classList.remove('m-expanded');
+	static toggleSection(isOpen, button) {
+		button.setAttribute('aria-expanded', !!isOpen);
 
-		const controlledSection = document.getElementById(button.getAttribute('data-aria-controls'));
+		const controlledSection = document.getElementById(button.getAttribute('aria-controls'));
 		if (!controlledSection) {
 			return;
 		}
-		controlledSection.setAttribute('aria-hidden', 'true');
-		controlledSection.classList.remove('m-expanded');
-	}
-
-	static openSection(button) {
-		button.setAttribute('aria-expanded', 'true');
-		button.classList.add('m-expanded');
-
-		const controlledSection = document.getElementById(button.getAttribute('data-aria-controls'));
-		if (!controlledSection) {
-			return;
-		}
-		controlledSection.setAttribute('aria-hidden', 'false');
-		controlledSection.classList.add('m-expanded');
+		controlledSection.setAttribute('aria-hidden', !isOpen);
+		Accordion.animateHeight(isOpen, controlledSection);
 	}
 
 	handleKeydown(event) {
-		const key = event.which || event.keyCode;
 		let preventEventActions = false;
 
-		switch (key) {
+		switch (event.keyCode) {
 			case this.keyCode.SPACE:
-				this.handleClick(event);
-				preventEventActions = true;
-				break;
 			case this.keyCode.RETURN:
 				this.handleClick(event);
 				preventEventActions = true;
@@ -148,9 +133,9 @@ export default class Accordion {
 	}
 
 	handleKeyup(event) {
-		const key = event.which || event.keyCode;
-		// FF fires click event on button node after keyup
+		const key = event.keyCode;
 		if (key === this.keyCode.SPACE || key === this.keyCode.RETURN) {
+			// Firefox synthetically fires click event on button element after keyup
 			event.preventDefault();
 		}
 	}
@@ -173,27 +158,22 @@ export default class Accordion {
 		this.buttons[nextIndex].focus();
 	}
 
-	initRoles() {
-		this.buttons.forEach(button => {
-			button.setAttribute('role', 'button');
-			button.tabIndex = 0;
-			button.setAttribute('aria-controls', button.getAttribute('data-aria-controls'));
-			button.setAttribute('aria-expanded', 'false');
-			document.getElementById(button.getAttribute('data-aria-controls')).setAttribute('role', 'region');
-		});
-	}
+	static animateHeight(isOpen, domNode) {
+		const innerElement = domNode.querySelector('[data-elem-acc-inner]');
+		if (!innerElement) {
+			return;
+		}
 
-	destroyRoles() {
-		this.buttons.forEach(button => {
-			button.removeAttribute('role');
-			button.tabIndex = -1;
-			button.removeAttribute('aria-controls');
-			button.removeAttribute('aria-expanded');
-			const controlledSection = document.getElementById(button.getAttribute('data-aria-controls'));
-			controlledSection.removeAttribute('role');
-			controlledSection.removeAttribute('aria-hidden');
-			controlledSection.classList.remove('m-expanded');
-		});
+		switch (isOpen) {
+			case true:
+				domNode.style.height = `${innerElement.offsetHeight}px`;
+				break;
+			case false:
+				domNode.style.height = '0px';
+				break;
+			default:
+				domNode.style.height = 'auto'; // remove hardcoded height in case of destroy
+		}
 	}
 
 	isAttributeSet(attr) {
